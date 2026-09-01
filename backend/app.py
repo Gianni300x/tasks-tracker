@@ -16,6 +16,7 @@ CORS(app, supports_credentials=True)
 
 # Necesario para desarrollo local: permite que oauthlib no exija HTTPS
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
 SCOPES = [
     "https://www.googleapis.com/auth/classroom.courses.readonly",
@@ -92,7 +93,7 @@ def tareas():
     servicio = build("classroom", "v1", credentials=credenciales)
     cursos = servicio.courses().list(courseStates=["ACTIVE"]).execute().get("courses", [])
 
-    pendientes = []
+    tareas_totales = []
     for curso in cursos:
         trabajos = (
             servicio.courses()
@@ -110,19 +111,20 @@ def tareas():
                 .execute()
                 .get("studentSubmissions", [])
             )
-            if not entregas or entregas[0]["state"] in ("TURNED_IN", "RETURNED"):
-                continue
-            pendientes.append(
+            estado = entregas[0]["state"] if entregas else "CREATED"
+            tareas_totales.append(
                 {
                     "curso": curso["name"],
                     "titulo": trabajo["title"],
+                    "descripcion": trabajo.get("description", ""),
+                    "puntos": trabajo.get("maxPoints"),
                     "vencimiento": trabajo.get("dueDate"),
-                    "estado": entregas[0]["state"],
+                    "estado": estado,
                     "link": trabajo.get("alternateLink"),
                 }
             )
 
-    return jsonify(pendientes)
+    return jsonify(tareas_totales)
 
 
 if __name__ == "__main__":

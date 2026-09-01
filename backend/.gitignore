@@ -1,3 +1,61 @@
-client_secret.json
-token.json
+# ---- Secrets / credenciales (NUNCA subir) ----
 .env
+.env.*
+!.env.example
+client_secret.json
+client_secret*.json
+token.json
+token*.json
+*.pem
+*.key
+*.p12
+credentials.json
+service-account*.json
+*-service-account.json
+
+# ---- Entornos virtuales ----
+venv/
+.venv/
+env/
+ENV/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.installed.cfg
+*.egg
+
+# ---- Testing / coverage ----
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# ---- Bases de datos locales ----
+*.sqlite3
+*.db
+instance/
+
+# ---- Logs ----
+*.log
+logs/
+
+# ---- Herramientas / IDE ----
+.mypy_cache/
+.ruff_cache/
+.idea/
+.vscode/
+*.swp
+
+# ---- SO ----
+.DS_Store
+Thumbs.db

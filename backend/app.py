@@ -81,7 +81,7 @@ def oauth2callback():
     flujo.code_verifier = session["code_verifier"]
     flujo.fetch_token(authorization_response=request.url)
     guardar_credenciales(flujo.credentials)
-    return redirect("http://localhost:3000")
+    return redirect("http://localhost:3000/dashboard")
 
 
 @app.route("/api/tareas")

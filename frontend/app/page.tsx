@@ -1,44 +1,52 @@
-import { BookOpen, Info } from "lucide-react";
-import { obtenerTareas } from "./lib/classroom";
-import Dashboard from "./components/dashboard";
+import { BookOpen, Info, Clock, CheckCircle2, Layers } from "lucide-react";
 
-export default async function Home() {
-  const tareas = await obtenerTareas();
+export default function Home() {
+  return (
+    <main className="min-h-screen bg-slate-100 text-slate-800 flex flex-col items-center justify-center px-4">
+      <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-sm mb-6">
+        <BookOpen size={28} />
+      </div>
+      <h1 className="text-4xl font-bold mb-3 text-slate-900">Agenda Escolar</h1>
+      <p className="text-slate-500 mb-10 text-center max-w-md">
+        Conectá tu cuenta de Google Classroom y tené todas tus tareas
+        pendientes, urgentes y por vencer organizadas en un solo lugar.
+      </p>
 
-  if (tareas === null) {
-    return (
-      <main className="min-h-screen bg-[#0a0a0f] text-zinc-100 flex flex-col items-center justify-center px-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-violet-800 flex items-center justify-center shadow-xl shadow-violet-900/50 mb-6">
-          <BookOpen size={28} />
+      <div className="grid grid-cols-3 gap-4 max-w-xl w-full mb-10 text-center">
+        <div className="flex flex-col items-center gap-2">
+          <Layers className="text-indigo-600" size={22} />
+          <p className="text-xs text-slate-500">Todos tus cursos juntos</p>
         </div>
-        <h1 className="text-4xl font-bold mb-3">Agenda Escolar</h1>
-        <p className="text-zinc-400 mb-10">
-          Controlá tus tareas de Google Classroom en un solo lugar
+        <div className="flex flex-col items-center gap-2">
+          <Clock className="text-amber-600" size={22} />
+          <p className="text-xs text-slate-500">Vencimientos ordenados</p>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <CheckCircle2 className="text-emerald-600" size={22} />
+          <p className="text-xs text-slate-500">Seguimiento de entregas</p>
+        </div>
+      </div>
+
+      <div className="w-full max-w-md bg-white border border-slate-200 shadow-sm rounded-2xl p-8 text-center">
+        <p className="text-slate-600 mb-6">
+          Iniciá sesión con tu cuenta institucional para importar tus cursos y
+          tareas automáticamente.
         </p>
-
-        <div className="w-full max-w-md bg-zinc-950 border border-violet-950/50 rounded-2xl p-8 text-center">
-          <p className="text-zinc-300 mb-6">
-            Iniciá sesión con tu cuenta institucional para importar tus cursos y
-            tareas automáticamente.
-          </p>
-          <a
-            href="http://localhost:5050/login"
-            className="flex items-center justify-center gap-3 bg-zinc-900 border border-zinc-800 hover:border-violet-700 transition-colors rounded-xl py-3 font-medium"
-          >
-            <GoogleIcon />
-            Continuar con Google
-          </a>
-          <p className="flex items-start gap-2 text-xs text-zinc-500 mt-6 text-left">
-            <Info size={14} className="mt-0.5 flex-shrink-0" />
-            Solo se accede a tu lista de cursos y tareas. No se modifica ningún
-            contenido en Classroom.
-          </p>
-        </div>
-      </main>
-    );
-  }
-
-  return <Dashboard tareas={tareas} />;
+        <a
+          href="http://localhost:5050/login"
+          className="flex items-center justify-center gap-3 bg-white border border-slate-300 hover:border-indigo-400 hover:bg-slate-50 transition-colors rounded-xl py-3 font-medium text-slate-700"
+        >
+          <GoogleIcon />
+          Continuar con Google
+        </a>
+        <p className="flex items-start gap-2 text-xs text-slate-400 mt-6 text-left">
+          <Info size={14} className="mt-0.5 flex-shrink-0" />
+          Solo se accede a tu lista de cursos y tareas. No se modifica ningún
+          contenido en Classroom.
+        </p>
+      </div>
+    </main>
+  );
 }
 
 function GoogleIcon() {

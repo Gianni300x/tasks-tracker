@@ -98,7 +98,6 @@ export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
 
   return (
     <div className="flex min-h-screen bg-slate-100 text-slate-800">
-      {/* Sidebar */}
       <aside className="w-64 border-r border-slate-200 bg-white p-6 flex flex-col gap-8">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm">

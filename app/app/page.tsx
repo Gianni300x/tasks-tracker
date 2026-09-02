@@ -1,4 +1,5 @@
 import { BookOpen, Info, Clock, CheckCircle2, Layers } from "lucide-react";
+import { signIn } from "@/auth";
 
 export default function Home() {
   return (
@@ -32,13 +33,20 @@ export default function Home() {
           Iniciá sesión con tu cuenta institucional para importar tus cursos y
           tareas automáticamente.
         </p>
-        <a
-          href="http://localhost:5050/login"
-          className="flex items-center justify-center gap-3 bg-white border border-slate-300 hover:border-indigo-400 hover:bg-slate-50 transition-colors rounded-xl py-3 font-medium text-slate-700"
+        <form
+          action={async () => {
+            "use server";
+            await signIn("google", { redirectTo: "/dashboard" });
+          }}
         >
-          <GoogleIcon />
-          Continuar con Google
-        </a>
+          <button
+            type="submit"
+            className="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 hover:border-indigo-400 hover:bg-slate-50 transition-colors rounded-xl py-3 font-medium text-slate-700"
+          >
+            <GoogleIcon />
+            Continuar con Google
+          </button>
+        </form>
         <p className="flex items-start gap-2 text-xs text-slate-400 mt-6 text-left">
           <Info size={14} className="mt-0.5 flex-shrink-0" />
           Solo se accede a tu lista de cursos y tareas. No se modifica ningún

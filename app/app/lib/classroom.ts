@@ -11,9 +11,10 @@ export interface Tarea {
 const ESTADOS_COMPLETADOS = ["TURNED_IN", "RETURNED"];
 
 export async function obtenerTareas(): Promise<Tarea[] | null> {
-  const respuesta = await fetch("http://localhost:5050/api/tareas", {
-    cache: "no-store",
-  });
+  const respuesta = await fetch(
+    `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/api/tareas`,
+    { cache: "no-store" },
+  );
 
   if (respuesta.status === 401) return null;
   if (!respuesta.ok) throw new Error("Error al consultar Classroom");

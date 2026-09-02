@@ -26,10 +26,11 @@ function colorParaCurso(nombre: string, listaCursos: string[]): string {
   return COLORES_CURSO[indice % COLORES_CURSO.length];
 }
 
-function colorEtiquetaVencimiento(dias: number | null): string {
-  if (dias === null) return "bg-slate-100 text-slate-500";
-  if (dias < 0) return "bg-red-50 text-red-700 border border-red-200";
-  if (dias <= 1) return "bg-orange-50 text-orange-700 border border-orange-200";
+function colorEtiquetaVencimiento(dias: number | null, completada: boolean): string {
+  if (completada) return "bg-green-400 text-white";
+  if (dias === null) return "bg-slate-400 text-slate-100";
+  if (dias < 0) return "bg-red-500 text-white";
+  if (dias <= 1) return "bg-orange-400 text-white";
   return "bg-slate-100 text-slate-600";
 }
 
@@ -176,10 +177,10 @@ export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
             fondo="bg-white border-l-4 border-l-amber-500"
           />
           <StatCard
-            icono={<CheckCircle2 size={18} className="text-emerald-600" />}
+            icono={<CheckCircle2 size={18} className="text-green-600" />}
             valor={completadas.length}
             etiqueta="Completadas"
-            fondo="bg-white border-l-4 border-l-emerald-500"
+            fondo="bg-white border-l-4 border-l-green-500"
           />
         </div>
 
@@ -214,6 +215,7 @@ export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
           <div className="grid grid-cols-3 gap-4">
             {ordenadas.map((tarea, i) => {
               const dias = diasHastaVencimiento(tarea.vencimiento);
+              const completada = estaCompletada(tarea);
               return (
                 <a
                   key={i}
@@ -233,10 +235,11 @@ export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
                     </span>
                     <span
                       className={`text-xs px-2 py-1 rounded-full ${colorEtiquetaVencimiento(
-                        dias
+                        dias,
+                        completada
                       )}`}
                     >
-                      {estaCompletada(tarea) ? "Entregada" : etiquetaVencimiento(dias)}
+                      {completada ? "Entregada" : etiquetaVencimiento(dias)}
                     </span>
                   </div>
                   <h3 className="font-medium mb-1 text-slate-900">{tarea.titulo}</h3>

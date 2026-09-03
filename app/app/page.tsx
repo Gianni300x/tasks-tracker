@@ -3,55 +3,73 @@ import { signIn } from "@/auth";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-800 flex flex-col items-center justify-center px-4">
-      <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-sm mb-6">
-        <BookOpen size={28} />
-      </div>
-      <h1 className="text-4xl font-bold mb-3 text-slate-900">Agenda Escolar</h1>
-      <p className="text-slate-500 mb-10 text-center max-w-md">
-        Conectá tu cuenta de Google Classroom y tené todas tus tareas
-        pendientes, urgentes y por vencer organizadas en un solo lugar.
-      </p>
+    <main className="min-h-screen bg-white text-slate-800 flex items-center justify-center px-6 py-14 font-[family-name:var(--font-poppins)]">
+      <div className="w-full max-w-5xl grid gap-16 lg:grid-cols-[1.1fr_0.9fr] items-center">
+        <div className="max-w-lg">
+          <h1 className="text-4xl font-bold leading-tight tracking-tight text-slate-900 text-balance mb-4">
+            Inicia tu agenda 
+            <span className="block text-indigo-600"> con Syllo</span>
+          </h1>
+          <h1 className="text-4xl font-bold leading-tight tracking-tight text-slate-900 text-balance mb-4">
+            
+          </h1>
 
-      <div className="grid grid-cols-3 gap-4 max-w-xl w-full mb-10 text-center">
-        <div className="flex flex-col items-center gap-2">
-          <Layers className="text-indigo-600" size={22} />
-          <p className="text-xs text-slate-500">Todos tus cursos juntos</p>
-        </div>
-        <div className="flex flex-col items-center gap-2">
-          <Clock className="text-amber-600" size={22} />
-          <p className="text-xs text-slate-500">Vencimientos ordenados</p>
-        </div>
-        <div className="flex flex-col items-center gap-2">
-          <CheckCircle2 className="text-emerald-600" size={22} />
-          <p className="text-xs text-slate-500">Seguimiento de entregas</p>
-        </div>
-      </div>
+          <p className="text-slate-600 leading-relaxed mb-3">
+            Syllo es una agenda pensada para estudiantes, que
+            reúne las tareas de todos tus cursos de Google Classroom 
+            las ordena por fecha de entrega y te muestra un 
+            vistazo qué está pendiente, qué es urgente y qué ya entregaste.
+          </p>
+          <p className="text-xs text-slate-400 leading-relaxed mb-8">
+            Conectá tu cuenta de Google Classroom y tené todas tus tareas
+            pendientes, urgentes y por vencer organizadas en un solo lugar.
+          </p>
 
-      <div className="w-full max-w-md bg-white border border-slate-200 shadow-sm rounded-2xl p-8 text-center">
-        <p className="text-slate-600 mb-6">
-          Iniciá sesión con tu cuenta institucional para importar tus cursos y
-          tareas automáticamente.
-        </p>
-        <form
-          action={async () => {
-            "use server";
-            await signIn("google", { redirectTo: "/dashboard" });
-          }}
-        >
-          <button
-            type="submit"
-            className="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 hover:border-indigo-400 hover:bg-slate-50 transition-colors rounded-xl py-3 font-medium text-slate-700"
+          <div className="flex flex-col gap-2.5">
+            {[
+              { Icon: Layers, color: "text-indigo-600", label: "Todos tus cursos juntos" },
+              { Icon: Clock, color: "text-amber-600", label: "Vencimientos ordenados" },
+              { Icon: CheckCircle2, color: "text-emerald-600", label: "Seguimiento de entregas" },
+            ].map(({ Icon, color, label }) => (
+              <div
+                key={label}
+                className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3"
+              >
+                <Icon className={`${color} flex-shrink-0`} size={20} />
+                <span className="text-sm font-medium text-slate-700">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04),0_16px_40px_-12px_rgba(79,70,229,0.18)]">
+          <h2 className="text-lg font-semibold text-slate-900 mb-1.5">
+            Ingresá a tu cuenta
+          </h2>
+          <p className="text-sm text-slate-500 leading-relaxed mb-6">
+            Iniciá sesión con tu cuenta institucional para importar tus cursos y
+            tareas automáticamente.
+          </p>
+          <form
+            action={async () => {
+              "use server";
+              await signIn("google", { redirectTo: "/dashboard" });
+            }}
           >
-            <GoogleIcon />
-            Continuar con Google
-          </button>
-        </form>
-        <p className="flex items-start gap-2 text-xs text-slate-400 mt-6 text-left">
-          <Info size={14} className="mt-0.5 flex-shrink-0" />
-          Solo se accede a tu lista de cursos y tareas. No se modifica ningún
-          contenido en Classroom.
-        </p>
+            <button
+              type="submit"
+              className="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 hover:border-indigo-400 hover:shadow-lg hover:shadow-indigo-600/20 hover:-translate-y-0.5 transition-all rounded-xl py-3 font-semibold text-slate-700"
+            >
+              <GoogleIcon />
+              Continuar con Google
+            </button>
+          </form>
+          <p className="flex items-start gap-2 text-xs text-slate-400 mt-5 text-left">
+            <Info size={14} className="mt-0.5 flex-shrink-0" />
+            Solo se accede a tu lista de cursos y tareas. No se modifica ningún
+            contenido en Classroom.
+          </p>
+        </div>
       </div>
     </main>
   );

@@ -1,0 +1,175 @@
+import { google, type gmail_v1 } from "googleapis";
+import {
+  detectarCurso,
+  parsearRemitente,
+  type Correo,
+  type CorreoCompleto,
+  type PaginaCorreos,
+} from "./correos";
+
+/** Todas las notificaciones de Classroom salen de este dominio. */
+const DOMINIO_CLASSROOM = "classroom.google.com";
+
+export const MAX_CORREOS_POR_PAGINA = 25;
+
+export interface OpcionesCorreos {
+  /** Nombres de cursos activos, para etiquetar cada correo. */
+  cursos?: string[];
+  /** Filtra por un curso puntual (se traduce a una búsqueda de Gmail). */
+  curso?: string | null;
+  /** Texto libre que el usuario escribió en el buscador. */
+  busqueda?: string | null;
+  soloNoLeidos?: boolean;
+  pageToken?: string | null;
+  maxResults?: number;
+}
+
+function clienteGmail(accessToken: string): gmail_v1.Gmail {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+  );
+  oauth2Client.setCredentials({ access_token: accessToken });
+  return google.gmail({ version: "v1", auth: oauth2Client });
+}
+
+/** Arma la query de búsqueda de Gmail a partir de los filtros de la UI. */
+export function construirQuery({
+  curso,
+  busqueda,
+  soloNoLeidos,
+}: Pick<OpcionesCorreos, "curso" | "busqueda" | "soloNoLeidos"> = {}): string {
+  const partes = [`from:${DOMINIO_CLASSROOM}`];
+  if (soloNoLeidos) partes.push("is:unread");
+  if (curso) partes.push(`"${escaparComillas(curso)}"`);
+  if (busqueda?.trim()) partes.push(`"${escaparComillas(busqueda.trim())}"`);
+  return partes.join(" ");
+}
+
+function escaparComillas(texto: string): string {
+  return texto.replace(/"/g, "");
+}
+
+function encabezado(
+  headers: gmail_v1.Schema$MessagePartHeader[] | undefined,
+  nombre: string,
+): string {
+  const header = headers?.find(
+    (h) => h.name?.toLowerCase() === nombre.toLowerCase(),
+  );
+  return header?.value ?? "";
+}
+
+function aCorreo(
+  mensaje: gmail_v1.Schema$Message,
+  cursos: string[],
+): Correo {
+  const headers = mensaje.payload?.headers;
+  const asunto = encabezado(headers, "Subject") || "(sin asunto)";
+  const { nombre, email } = parsearRemitente(encabezado(headers, "From"));
+  const etiquetas = mensaje.labelIds ?? [];
+  const resumen = decodificarEntidades(mensaje.snippet ?? "");
+
+  return {
+    id: mensaje.id!,
+    threadId: mensaje.threadId ?? mensaje.id!,
+    asunto,
+    remitente: nombre,
+    remitenteEmail: email,
+    fecha: new Date(Number(mensaje.internalDate ?? 0)).toISOString(),
+    resumen,
+    leido: !etiquetas.includes("UNREAD"),
+    destacado: etiquetas.includes("STARRED"),
+    curso: detectarCurso(`${asunto} ${resumen}`, cursos),
+    link: `https://mail.google.com/mail/u/0/#inbox/${mensaje.id}`,
+  };
+}
+
+/** Lista los correos de Classroom del usuario, ya normalizados para la UI. */
+export async function fetchCorreosDeClassroom(
+  accessToken: string,
+  opciones: OpcionesCorreos = {},
+): Promise<PaginaCorreos> {
+  const gmail = clienteGmail(accessToken);
+  const cursos = opciones.cursos ?? [];
+
+  const listado = await gmail.users.messages.list({
+    userId: "me",
+    q: construirQuery(opciones),
+    maxResults: opciones.maxResults ?? MAX_CORREOS_POR_PAGINA,
+    pageToken: opciones.pageToken ?? undefined,
+  });
+
+  const referencias = listado.data.messages ?? [];
+
+  // `metadata` trae encabezados, etiquetas y snippet sin bajar el cuerpo entero.
+  const correos = await Promise.all(
+    referencias.map(async (referencia) => {
+      const detalle = await gmail.users.messages.get({
+        userId: "me",
+        id: referencia.id!,
+        format: "metadata",
+        metadataHeaders: ["From", "Subject", "Date"],
+      });
+      return aCorreo(detalle.data, cursos);
+    }),
+  );
+
+  return {
+    correos,
+    siguientePagina: listado.data.nextPageToken ?? null,
+  };
+}
+
+/** Trae un correo con su cuerpo, para el panel de lectura. */
+export async function fetchCorreoCompleto(
+  accessToken: string,
+  id: string,
+  cursos: string[] = [],
+): Promise<CorreoCompleto> {
+  const gmail = clienteGmail(accessToken);
+  const respuesta = await gmail.users.messages.get({
+    userId: "me",
+    id,
+    format: "full",
+  });
+
+  const mensaje = respuesta.data;
+  const payload = mensaje.payload;
+
+  return {
+    ...aCorreo(mensaje, cursos),
+    html: payload ? buscarParte(payload, "text/html") || null : null,
+    texto: payload ? buscarParte(payload, "text/plain") || null : null,
+  };
+}
+
+/** Recorre el árbol MIME buscando la primera parte del tipo pedido. */
+function buscarParte(
+  parte: gmail_v1.Schema$MessagePart,
+  mimeType: string,
+): string {
+  if (parte.mimeType === mimeType && parte.body?.data) {
+    return decodificarBase64Url(parte.body.data);
+  }
+  for (const hija of parte.parts ?? []) {
+    const encontrada = buscarParte(hija, mimeType);
+    if (encontrada) return encontrada;
+  }
+  return "";
+}
+
+function decodificarBase64Url(data: string): string {
+  return Buffer.from(data, "base64url").toString("utf8");
+}
+
+/** Gmail devuelve el snippet con entidades HTML escapadas. */
+function decodificarEntidades(texto: string): string {
+  return texto
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}

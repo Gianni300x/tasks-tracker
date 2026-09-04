@@ -1,5 +1,13 @@
-import { google } from "googleapis";
+import { google, type classroom_v1 } from "googleapis";
 import type { Tarea } from "./classroom";
+
+/** Classroom marca año/mes/día como opcionales; sin los tres no hay vencimiento. */
+function normalizarVencimiento(
+  fecha: classroom_v1.Schema$Date | null | undefined,
+): Tarea["vencimiento"] {
+  if (!fecha?.year || !fecha.month || !fecha.day) return null;
+  return { year: fecha.year, month: fecha.month, day: fecha.day };
+}
 
 export async function fetchTareasDesdeClassroom(
   accessToken: string,
@@ -33,11 +41,11 @@ export async function fetchTareasDesdeClassroom(
         const estado = entregas[0]?.state ?? "CREATED";
 
         return {
-          curso: curso.name,
-          titulo: trabajo.title,
+          curso: curso.name ?? "Sin curso",
+          titulo: trabajo.title ?? "(sin título)",
           descripcion: trabajo.description ?? "",
           puntos: trabajo.maxPoints ?? null,
-          vencimiento: trabajo.dueDate ?? null,
+          vencimiento: normalizarVencimiento(trabajo.dueDate),
           estado,
           link: trabajo.alternateLink ?? "",
         } satisfies Tarea;
@@ -46,4 +54,22 @@ export async function fetchTareasDesdeClassroom(
   });
 
   return (await Promise.all(tareasPromises)).flat();
+}
+
+/** Nombres de los cursos activos, para etiquetar los correos por curso. */
+export async function fetchNombresCursos(
+  accessToken: string,
+): Promise<string[]> {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+  );
+  oauth2Client.setCredentials({ access_token: accessToken });
+
+  const classroom = google.classroom({ version: "v1", auth: oauth2Client });
+  const cursosRes = await classroom.courses.list({ courseStates: ["ACTIVE"] });
+
+  return (cursosRes.data.courses ?? [])
+    .map((curso) => curso.name)
+    .filter((nombre): nombre is string => Boolean(nombre));
 }

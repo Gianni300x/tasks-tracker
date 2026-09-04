@@ -3,6 +3,8 @@
  * Este archivo no importa `googleapis`: lo usan tanto el servidor como el cliente.
  */
 
+export type OrigenCorreo = "Classroom" | "CVG";
+
 export interface Correo {
   id: string;
   threadId: string;
@@ -16,8 +18,10 @@ export interface Correo {
   resumen: string;
   leido: boolean;
   destacado: boolean;
-  /** Curso de Classroom detectado a partir del asunto, si se pudo. */
+  /** Curso detectado a partir del asunto o resumen, si se pudo. */
   curso: string | null;
+  /** Origen o plataforma del correo (Classroom o CVG). */
+  origen: OrigenCorreo;
   /** Link para abrir el mensaje en Gmail. */
   link: string;
 }
@@ -46,6 +50,15 @@ export function parsearRemitente(from: string): {
   }
   const email = from.trim();
   return { nombre: email, email };
+}
+
+/** Detecta si el correo proviene de Classroom o de CVG (UTN FRRo). */
+export function detectarOrigen(email: string): OrigenCorreo {
+  const normalizado = email.toLowerCase();
+  if (normalizado.includes("frro.utn.edu.ar")) {
+    return "CVG";
+  }
+  return "Classroom";
 }
 
 /**

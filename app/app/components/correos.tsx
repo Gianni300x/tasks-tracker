@@ -17,6 +17,7 @@ import {
   formatearFechaCorreo,
   type Correo,
   type CorreoCompleto,
+  type OrigenCorreo,
   type PaginaCorreos,
 } from "../lib/correos";
 
@@ -28,6 +29,7 @@ export default function Correos({
   paginaInicial: PaginaCorreos;
 }) {
   const [cursoSeleccionado, setCursoSeleccionado] = useState<string | null>(null);
+  const [origenFiltro, setOrigenFiltro] = useState<"Todos" | "Classroom" | "CVG">("Todos");
   const [busqueda, setBusqueda] = useState("");
   const [busquedaAplicada, setBusquedaAplicada] = useState("");
   const [soloNoLeidos, setSoloNoLeidos] = useState(false);
@@ -50,12 +52,13 @@ export default function Correos({
     (pageToken?: string | null) => {
       const params = new URLSearchParams();
       if (cursoSeleccionado) params.set("curso", cursoSeleccionado);
+      if (origenFiltro !== "Todos") params.set("origen", origenFiltro);
       if (busquedaAplicada) params.set("busqueda", busquedaAplicada);
       if (soloNoLeidos) params.set("noLeidos", "1");
       if (pageToken) params.set("pageToken", pageToken);
       return `/api/correos?${params.toString()}`;
     },
-    [cursoSeleccionado, busquedaAplicada, soloNoLeidos],
+    [cursoSeleccionado, origenFiltro, busquedaAplicada, soloNoLeidos],
   );
 
   // Debounce del buscador: no consultamos Gmail en cada tecla.
@@ -88,7 +91,7 @@ export default function Correos({
         setError(
           e.message === "401"
             ? "Tu sesión con Google expiró. Volvé a iniciar sesión."
-            : "No pudimos consultar tus correos de Classroom.",
+            : "No pudimos consultar tus correos.",
         );
       })
       .finally(() => setCargando(false));
@@ -146,7 +149,7 @@ export default function Correos({
       <main className="flex-1 p-8 min-w-0">
         <div className="mb-6">
           <h1 className="text-xl font-semibold text-slate-900">
-            Correos de {cursoSeleccionado ?? "Classroom"}
+            Correos {cursoSeleccionado ? `de ${cursoSeleccionado}` : "recibidos"}
           </h1>
           <p className="text-sm text-slate-500 capitalize">{hoy}</p>
         </div>
@@ -160,9 +163,55 @@ export default function Correos({
             <input
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar en los correos de Classroom…"
+              placeholder="Buscar correos de Classroom o CVG…"
               className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none"
             />
+          </div>
+
+          <div className="flex rounded-lg border border-slate-200 bg-white p-1">
+            <button
+              type="button"
+              onClick={() => setOrigenFiltro("Todos")}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                origenFiltro === "Todos"
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              type="button"
+              onClick={() => setOrigenFiltro("Classroom")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                origenFiltro === "Classroom"
+                  ? "bg-emerald-600 text-white"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  origenFiltro === "Classroom" ? "bg-white" : "bg-emerald-500"
+                }`}
+              />
+              Classroom
+            </button>
+            <button
+              type="button"
+              onClick={() => setOrigenFiltro("CVG")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                origenFiltro === "CVG"
+                  ? "bg-sky-600 text-white"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  origenFiltro === "CVG" ? "bg-white" : "bg-sky-500"
+                }`}
+              />
+              CVG
+            </button>
           </div>
 
           <button
@@ -194,7 +243,7 @@ export default function Correos({
               <Cargando texto="Buscando correos…" />
             ) : correos.length === 0 ? (
               <p className="text-sm text-slate-500">
-                No hay correos de Classroom con estos filtros.
+                No hay correos con estos filtros.
               </p>
             ) : (
               <>
@@ -233,6 +282,21 @@ export default function Correos({
   );
 }
 
+function EtiquetaOrigen({ origen }: { origen: OrigenCorreo }) {
+  if (origen === "CVG") {
+    return (
+      <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-sky-50 text-sky-700 border border-sky-200/70 shrink-0">
+        CVG
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/70 shrink-0">
+      Classroom
+    </span>
+  );
+}
+
 function FilaCorreo({
   correo,
   cursos,
@@ -253,16 +317,20 @@ function FilaCorreo({
           : "border-slate-200 hover:border-indigo-300 hover:shadow-md"
       }`}
     >
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <span
-          className={`truncate text-xs font-medium ${
-            correo.curso
-              ? colorParaCurso(correo.curso, cursos)
-              : "text-slate-400"
-          }`}
-        >
-          {correo.curso ?? "Classroom"}
-        </span>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <EtiquetaOrigen origen={correo.origen} />
+          {correo.curso && (
+            <span
+              className={`truncate text-xs font-medium ${colorParaCurso(
+                correo.curso,
+                cursos,
+              )}`}
+            >
+              {correo.curso}
+            </span>
+          )}
+        </div>
         <span className="flex shrink-0 items-center gap-1.5 text-xs text-slate-400">
           {correo.destacado && (
             <Star size={12} className="fill-amber-400 text-amber-400" />
@@ -366,16 +434,19 @@ function Lector({ id, cursos }: { id: string | null; cursos: string[] }) {
           {formatearFechaCompleta(correo.fecha)}
         </p>
 
-        {correo.curso && (
-          <span
-            className={`mt-2 inline-block text-xs font-medium ${colorParaCurso(
-              correo.curso,
-              cursos,
-            )}`}
-          >
-            {correo.curso}
-          </span>
-        )}
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          <EtiquetaOrigen origen={correo.origen} />
+          {correo.curso && (
+            <span
+              className={`inline-block text-xs font-medium ${colorParaCurso(
+                correo.curso,
+                cursos,
+              )}`}
+            >
+              {correo.curso}
+            </span>
+          )}
+        </div>
       </header>
 
       {correo.html ? (

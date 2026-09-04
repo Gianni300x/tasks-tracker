@@ -44,8 +44,8 @@ function PermisoFaltante() {
           Falta el permiso de Gmail
         </h1>
         <p className="mb-6 text-sm text-slate-500">
-          Para mostrarte los correos de Classroom, Syllo necesita permiso de
-          solo lectura sobre tu Gmail. Volvé a iniciar sesión para otorgarlo.
+          Para mostrarte los correos de Classroom y CVG, Syllo necesita permiso
+          de solo lectura sobre tu Gmail. Volvé a iniciar sesión para otorgarlo.
         </p>
         <form
           action={async () => {

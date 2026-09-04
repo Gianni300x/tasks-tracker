@@ -27,7 +27,7 @@ function colorParaCurso(nombre: string, listaCursos: string[]): string {
 }
 
 function colorEtiquetaVencimiento(dias: number | null, completada: boolean): string {
-  if (completada) return "bg-green-400 text-white";
+  if (completada) return "bg-green-500 text-white";
   if (dias === null) return "bg-slate-400 text-slate-100";
   if (dias < 0) return "bg-red-500 text-white";
   if (dias <= 1) return "bg-orange-400 text-white";

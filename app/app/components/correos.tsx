@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ExternalLink,
-  ImageOff,
-  Image as ImageIcon,
   Loader2,
   Mail,
   MailOpen,
@@ -293,7 +291,6 @@ function Lector({ id, cursos }: { id: string | null; cursos: string[] }) {
   // ya refleja la carga en curso y el efecto solo dispara el fetch.
   const [cargando, setCargando] = useState(Boolean(id));
   const [error, setError] = useState<string | null>(null);
-  const [mostrarImagenes, setMostrarImagenes] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -379,22 +376,13 @@ function Lector({ id, cursos }: { id: string | null; cursos: string[] }) {
       </header>
 
       {correo.html ? (
-        <>
-          <button
-            onClick={() => setMostrarImagenes((valor) => !valor)}
-            className="mb-3 flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
-          >
-            {mostrarImagenes ? <ImageOff size={13} /> : <ImageIcon size={13} />}
-            {mostrarImagenes ? "Ocultar imágenes" : "Mostrar imágenes"}
-          </button>
-          <iframe
-            title={correo.asunto}
-            // sandbox vacío: el HTML del mail no ejecuta scripts ni accede a Syllo.
-            sandbox=""
-            srcDoc={documentoHtml(correo.html, mostrarImagenes)}
-            className="h-[60vh] w-full rounded-lg border border-slate-200 bg-white"
-          />
-        </>
+        <iframe
+          title={correo.asunto}
+          // sandbox vacío: el HTML del mail no ejecuta scripts ni accede a Syllo.
+          sandbox=""
+          srcDoc={documentoHtml(correo.html)}
+          className="h-[60vh] w-full rounded-lg border border-slate-200 bg-white"
+        />
       ) : (
         <pre className="whitespace-pre-wrap break-words font-[family-name:var(--font-geist-sans)] text-sm text-slate-700">
           {correo.texto ?? correo.resumen}
@@ -405,19 +393,16 @@ function Lector({ id, cursos }: { id: string | null; cursos: string[] }) {
 }
 
 /**
- * Envuelve el HTML del mail con una CSP propia. Las imágenes remotas quedan
- * bloqueadas hasta que el usuario las pide, para no avisarle al remitente que
- * abrió el correo.
+ * Envuelve el HTML del mail con una CSP propia.
  */
-function documentoHtml(html: string, mostrarImagenes: boolean): string {
-  const imgSrc = mostrarImagenes ? "https: data:" : "'none'";
+function documentoHtml(html: string): string {
   return `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; style-src 'unsafe-inline'; img-src ${imgSrc}; font-src 'none'; media-src 'none'; frame-src 'none'"
+      content="default-src 'none'; style-src 'unsafe-inline'; img-src https: data:; font-src 'none'; media-src 'none'; frame-src 'none'"
     />
     <base target="_blank" />
     <style>

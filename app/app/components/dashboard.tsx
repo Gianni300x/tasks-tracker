@@ -10,6 +10,7 @@ import {
   formatearFecha,
   etiquetaVencimiento,
 } from "../lib/classroom";
+import { clasificarTareas, contarPendientesPorCurso } from "../lib/tareas-service";
 
 type Tab = "pendientes" | "urgentes" | "semana" | "completadas";
 
@@ -17,7 +18,7 @@ function colorEtiquetaVencimiento(dias: number | null, completada: boolean): str
   if (completada) return "bg-green-500 text-white";
   if (dias === null) return "bg-slate-400 text-slate-100";
   if (dias < 0) return "bg-red-500 text-white";
-  if (dias <= 1) return "bg-orange-400 text-white";
+  if (dias <= 3) return "bg-orange-400 text-white";
   return "bg-slate-100 text-slate-600";
 }
 
@@ -30,15 +31,10 @@ export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
     [tareas]
   );
 
-  const conteoPorCurso = useMemo(() => {
-    const conteo: Record<string, number> = {};
-    for (const tarea of tareas) {
-      if (!estaCompletada(tarea)) {
-        conteo[tarea.curso] = (conteo[tarea.curso] ?? 0) + 1;
-      }
-    }
-    return conteo;
-  }, [tareas]);
+  const conteoPorCurso = useMemo(
+    () => contarPendientesPorCurso(tareas),
+    [tareas]
+  );
 
   const tareasFiltradasPorCurso = useMemo(
     () =>
@@ -48,20 +44,10 @@ export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
     [tareas, cursoSeleccionado]
   );
 
-  const pendientes = tareasFiltradasPorCurso.filter((t) => !estaCompletada(t));
-  const vencidas = pendientes.filter((t) => {
-    const dias = diasHastaVencimiento(t.vencimiento);
-    return dias !== null && dias < 0;
-  });
-  const estaSemana = pendientes.filter((t) => {
-    const dias = diasHastaVencimiento(t.vencimiento);
-    return dias !== null && dias >= 0 && dias <= 7;
-  });
-  const urgentes = pendientes.filter((t) => {
-    const dias = diasHastaVencimiento(t.vencimiento);
-    return dias !== null && dias <= 1;
-  });
-  const completadas = tareasFiltradasPorCurso.filter(estaCompletada);
+  const { pendientes, vencidas, urgentes, estaSemana, completadas } = useMemo(
+    () => clasificarTareas(tareasFiltradasPorCurso),
+    [tareasFiltradasPorCurso]
+  );
 
   const tareasDelTab =
     tab === "pendientes"

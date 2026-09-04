@@ -10,18 +10,6 @@ export interface Tarea {
 
 const ESTADOS_COMPLETADOS = ["TURNED_IN", "RETURNED"];
 
-export async function obtenerTareas(): Promise<Tarea[] | null> {
-  const respuesta = await fetch(
-    `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/api/tareas`,
-    { cache: "no-store" },
-  );
-
-  if (respuesta.status === 401) return null;
-  if (!respuesta.ok) throw new Error("Error al consultar Classroom");
-
-  return respuesta.json();
-}
-
 export function diasHastaVencimiento(vencimiento: Tarea["vencimiento"]): number | null {
   if (!vencimiento) return null;
   const fecha = new Date(vencimiento.year, vencimiento.month - 1, vencimiento.day);

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, ListChecks, Mail } from "lucide-react";
+import { BookOpen, ListChecks, LogOut, Mail } from "lucide-react";
 
 const COLORES_CURSO = [
   "text-sky-600",
@@ -12,33 +12,61 @@ const COLORES_CURSO = [
   "text-violet-600",
 ];
 
+const COLORES_CURSO_BG = [
+  "bg-sky-500",
+  "bg-amber-500",
+  "bg-emerald-500",
+  "bg-rose-500",
+  "bg-cyan-500",
+  "bg-violet-500",
+];
+
 export function colorParaCurso(nombre: string, listaCursos: string[]): string {
   const indice = listaCursos.indexOf(nombre);
   return COLORES_CURSO[indice % COLORES_CURSO.length];
 }
 
+function bgParaCurso(nombre: string, listaCursos: string[]): string {
+  const indice = listaCursos.indexOf(nombre);
+  return COLORES_CURSO_BG[indice % COLORES_CURSO_BG.length];
+}
+
 export type Seccion = "tareas" | "correos";
+
+export interface UsuarioSidebar {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
 
 export default function Sidebar({
   cursos,
   conteoPorCurso = {},
-  cursoSeleccionado,
-  onSeleccionarCurso,
+  cursosSeleccionados,
+  onToggleCurso,
+  onLimpiarCursos,
   seccion,
+  usuario,
+  onCerrarSesion,
 }: {
   cursos: string[];
   conteoPorCurso?: Record<string, number>;
-  cursoSeleccionado: string | null;
-  onSeleccionarCurso: (curso: string | null) => void;
+  cursosSeleccionados: string[];
+  onToggleCurso: (curso: string) => void;
+  onLimpiarCursos: () => void;
   seccion: Seccion;
+  usuario?: UsuarioSidebar;
+  onCerrarSesion?: () => void;
 }) {
+  const haySeleccion = cursosSeleccionados.length > 0;
+
   return (
-    <aside className="w-64 shrink-0 border-r border-slate-200 bg-white p-6 flex flex-col gap-8">
-      <div className="flex items-center gap-3 text-indigo-600">
+    <aside className="w-64 shrink-0 border-r border-slate-200 bg-white p-6 flex flex-col h-screen sticky top-0">
+      <div className="flex items-center gap-3 text-indigo-600 mb-8">
         <span className="font-bold text-lg">Syllo</span>
       </div>
 
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-col gap-1 mb-8">
         <EnlaceSeccion
           href="/dashboard"
           icono={<ListChecks size={16} />}
@@ -53,42 +81,139 @@ export default function Sidebar({
         />
       </nav>
 
-      <div>
-        <p className="text-xs font-medium text-slate-900 tracking-wider mb-3">
-          MIS CURSOS
-        </p>
-        <nav className="flex flex-col gap-1 text-slate-900">
+      {/* Cursos: multi-selección, scrollea internamente */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-medium text-slate-900 tracking-wider">
+            MIS CURSOS
+          </p>
+          {haySeleccion && (
+            <button
+              onClick={onLimpiarCursos}
+              className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+            >
+              Ver todos
+            </button>
+          )}
+        </div>
+
+        {/* Indicador de cantidad seleccionada */}
+        {haySeleccion && (
+          <p className="text-[11px] text-slate-400 mb-2">
+            {cursosSeleccionados.length === 1
+              ? "1 curso seleccionado"
+              : `${cursosSeleccionados.length} cursos seleccionados`}
+          </p>
+        )}
+
+        <nav className="flex flex-col gap-0.5 text-slate-900 overflow-y-auto">
+          {/* Opción "Todos" */}
           <button
-            onClick={() => onSeleccionarCurso(null)}
+            onClick={onLimpiarCursos}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              cursoSeleccionado === null
+              !haySeleccion
                 ? "bg-indigo-50 text-slate-900"
-                : "text-slate-900 hover:bg-slate-100"
+                : "text-slate-500 hover:bg-slate-100"
             }`}
           >
-            <BookOpen size={16} />
+            <BookOpen size={16} className={!haySeleccion ? "text-indigo-600" : ""} />
             Todos los cursos
           </button>
-          {cursos.map((nombre) => (
-            <button
-              key={nombre}
-              onClick={() => onSeleccionarCurso(nombre)}
-              className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
-                cursoSeleccionado === nombre
-                  ? "bg-indigo-50 text-slate-900"
-                  : "text-slate-500 hover:bg-slate-100"
-              }`}
-            >
-              <span className={colorParaCurso(nombre, cursos)}>{nombre}</span>
-              {conteoPorCurso[nombre] > 0 && (
-                <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full shrink-0">
-                  {conteoPorCurso[nombre]}
+
+          {/* Lista de cursos con checkboxes visuales */}
+          {cursos.map((nombre) => {
+            const seleccionado = cursosSeleccionados.includes(nombre);
+            return (
+              <button
+                key={nombre}
+                onClick={() => onToggleCurso(nombre)}
+                className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
+                  seleccionado
+                    ? "bg-indigo-50 text-slate-900"
+                    : "text-slate-500 hover:bg-slate-100"
+                }`}
+              >
+                <span className="flex items-center gap-2 min-w-0">
+                  {/* Checkbox visual */}
+                  <span
+                    className={`flex-shrink-0 w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${
+                      seleccionado
+                        ? `${bgParaCurso(nombre, cursos)} border-transparent`
+                        : "border-slate-300 bg-white"
+                    }`}
+                  >
+                    {seleccionado && (
+                      <svg
+                        className="w-2 h-2 text-white"
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        strokeWidth="2.5"
+                        stroke="currentColor"
+                      >
+                        <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className={`truncate ${colorParaCurso(nombre, cursos)}`}>
+                    {nombre}
+                  </span>
                 </span>
-              )}
-            </button>
-          ))}
+
+                {/* Badge de no leídos/pendientes */}
+                {conteoPorCurso[nombre] > 0 && (
+                  <span
+                    className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 ${
+                      seleccionado
+                        ? "bg-indigo-100 text-indigo-700"
+                        : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {conteoPorCurso[nombre]}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
       </div>
+
+      {/* Pie: perfil de usuario y logout */}
+      {usuario && (
+        <div className="pt-4 border-t border-slate-200 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {usuario.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={usuario.image}
+                alt={usuario.name ?? "Avatar"}
+                className="w-8 h-8 rounded-full ring-1 ring-slate-200 shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-semibold flex items-center justify-center text-xs shrink-0 select-none">
+                {usuario.name?.[0]?.toUpperCase() ?? "U"}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-slate-900 truncate">
+                {usuario.name ?? "Estudiante"}
+              </p>
+              <p className="text-[11px] text-slate-500 truncate">
+                {usuario.email ?? ""}
+              </p>
+            </div>
+          </div>
+
+          {onCerrarSesion && (
+            <button
+              onClick={onCerrarSesion}
+              title="Cerrar sesión"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
+            >
+              <LogOut size={16} />
+            </button>
+          )}
+        </div>
+      )}
     </aside>
   );
 }

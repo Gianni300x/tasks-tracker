@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { auth, signIn } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { fetchCorreosDeClassroom } from "@/app/lib/correos-server";
 import { fetchNombresCursos } from "@/app/lib/tareas-server";
 import Correos from "@/app/components/correos";
@@ -14,10 +14,24 @@ export default async function CorreosPage() {
 
   const bandeja = await cargarBandeja(session.access_token);
 
+  const usuario = {
+    name: session.user?.name,
+    email: session.user?.email,
+    image: session.user?.image,
+  };
+
   if (!bandeja) return <PermisoFaltante />;
 
   return (
-    <Correos cursos={bandeja.cursos} paginaInicial={bandeja.paginaInicial} />
+    <Correos
+      cursos={bandeja.cursos}
+      paginaInicial={bandeja.paginaInicial}
+      usuario={usuario}
+      onCerrarSesion={async () => {
+        "use server";
+        await signOut({ redirectTo: "/" });
+      }}
+    />
   );
 }
 

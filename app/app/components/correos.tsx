@@ -11,7 +11,7 @@ import {
   Search,
   Star,
 } from "lucide-react";
-import Sidebar, { colorParaCurso } from "./sidebar";
+import Sidebar, { colorParaCurso, type UsuarioSidebar } from "./sidebar";
 import {
   formatearFechaCompleta,
   formatearFechaCorreo,
@@ -24,11 +24,15 @@ import {
 export default function Correos({
   cursos,
   paginaInicial,
+  usuario,
+  onCerrarSesion,
 }: {
   cursos: string[];
   paginaInicial: PaginaCorreos;
+  usuario?: UsuarioSidebar;
+  onCerrarSesion?: () => void;
 }) {
-  const [cursoSeleccionado, setCursoSeleccionado] = useState<string | null>(null);
+  const [cursosSeleccionados, setCursosSeleccionados] = useState<string[]>([]);
   const [origenFiltro, setOrigenFiltro] = useState<"Todos" | "Classroom" | "CVG">("Todos");
   const [busqueda, setBusqueda] = useState("");
   const [busquedaAplicada, setBusquedaAplicada] = useState("");
@@ -44,6 +48,12 @@ export default function Correos({
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
 
+  function toggleCurso(curso: string) {
+    setCursosSeleccionados((prev) =>
+      prev.includes(curso) ? prev.filter((c) => c !== curso) : [...prev, curso],
+    );
+  }
+
   // Última URL consultada. Arranca en la que el servidor ya resolvió, así el
   // primer render no vuelve a pedir lo mismo.
   const urlCargada = useRef("/api/correos?");
@@ -51,14 +61,14 @@ export default function Correos({
   const construirUrl = useCallback(
     (pageToken?: string | null) => {
       const params = new URLSearchParams();
-      if (cursoSeleccionado) params.set("curso", cursoSeleccionado);
+      // El filtrado por curso se hace client-side para soportar multi-selección
       if (origenFiltro !== "Todos") params.set("origen", origenFiltro);
       if (busquedaAplicada) params.set("busqueda", busquedaAplicada);
       if (soloNoLeidos) params.set("noLeidos", "1");
       if (pageToken) params.set("pageToken", pageToken);
       return `/api/correos?${params.toString()}`;
     },
-    [cursoSeleccionado, origenFiltro, busquedaAplicada, soloNoLeidos],
+    [origenFiltro, busquedaAplicada, soloNoLeidos],
   );
 
   // Debounce del buscador: no consultamos Gmail en cada tecla.
@@ -141,15 +151,22 @@ export default function Correos({
       <Sidebar
         cursos={cursos}
         conteoPorCurso={conteoPorCurso}
-        cursoSeleccionado={cursoSeleccionado}
-        onSeleccionarCurso={setCursoSeleccionado}
+        cursosSeleccionados={cursosSeleccionados}
+        onToggleCurso={toggleCurso}
+        onLimpiarCursos={() => setCursosSeleccionados([])}
         seccion="correos"
+        usuario={usuario}
+        onCerrarSesion={onCerrarSesion}
       />
 
       <main className="flex-1 p-8 min-w-0">
         <div className="mb-6">
           <h1 className="text-xl font-semibold text-slate-900">
-            Correos {cursoSeleccionado ? `de ${cursoSeleccionado}` : "recibidos"}
+            {cursosSeleccionados.length === 0
+              ? "Correos recibidos"
+              : cursosSeleccionados.length === 1
+                ? `Correos de ${cursosSeleccionados[0]}`
+                : `Correos — ${cursosSeleccionados.length} cursos`}
           </h1>
           <p className="text-sm text-slate-500 capitalize">{hoy}</p>
         </div>
@@ -247,15 +264,21 @@ export default function Correos({
               </p>
             ) : (
               <>
-                {correos.map((correo) => (
-                  <FilaCorreo
-                    key={correo.id}
-                    correo={correo}
-                    cursos={cursos}
-                    activo={seleccionado === correo.id}
-                    onSeleccionar={() => setSeleccionado(correo.id)}
-                  />
-                ))}
+                {correos
+                  .filter(
+                    (c) =>
+                      cursosSeleccionados.length === 0 ||
+                      (c.curso != null && cursosSeleccionados.includes(c.curso)),
+                  )
+                  .map((correo) => (
+                    <FilaCorreo
+                      key={correo.id}
+                      correo={correo}
+                      cursos={cursos}
+                      activo={seleccionado === correo.id}
+                      onSeleccionar={() => setSeleccionado(correo.id)}
+                    />
+                  ))}
                 {siguientePagina && (
                   <button
                     onClick={cargarMas}

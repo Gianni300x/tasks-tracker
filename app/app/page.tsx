@@ -1,4 +1,4 @@
-import {Info, Clock, CheckCircle2, Layers } from "lucide-react";
+import { Info, Clock, CheckCircle2, Layers } from "lucide-react";
 import { signIn } from "@/auth";
 
 export default function Home() {

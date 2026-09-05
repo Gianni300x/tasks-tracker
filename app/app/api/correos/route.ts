@@ -15,6 +15,9 @@ export async function GET(request: NextRequest) {
 
   const params = request.nextUrl.searchParams;
   const curso = params.get("curso");
+  const origenParam = params.get("origen");
+  const origen =
+    origenParam === "Classroom" || origenParam === "CVG" ? origenParam : null;
   const busqueda = params.get("busqueda");
   const soloNoLeidos = params.get("noLeidos") === "1";
   const pageToken = params.get("pageToken");
@@ -24,6 +27,7 @@ export async function GET(request: NextRequest) {
     const pagina = await fetchCorreosDeClassroom(session.access_token, {
       cursos,
       curso,
+      origen,
       busqueda,
       soloNoLeidos,
       pageToken,

@@ -1,14 +1,17 @@
 import { google, type gmail_v1 } from "googleapis";
 import {
   detectarCurso,
+  detectarOrigen,
   parsearRemitente,
   type Correo,
   type CorreoCompleto,
+  type OrigenCorreo,
   type PaginaCorreos,
 } from "./correos";
 
-/** Todas las notificaciones de Classroom salen de este dominio. */
-const DOMINIO_CLASSROOM = "classroom.google.com";
+/** Notificaciones de Classroom y CVG (Campus Virtual Global UTN FRRo). */
+export const DOMINIO_CLASSROOM = "classroom.google.com";
+export const REMITENTE_CVG = "noreply@frro.utn.edu.ar";
 
 export const MAX_CORREOS_POR_PAGINA = 25;
 
@@ -17,6 +20,8 @@ export interface OpcionesCorreos {
   cursos?: string[];
   /** Filtra por un curso puntual (se traduce a una búsqueda de Gmail). */
   curso?: string | null;
+  /** Filtra por origen (Classroom o CVG). */
+  origen?: OrigenCorreo | null;
   /** Texto libre que el usuario escribió en el buscador. */
   busqueda?: string | null;
   soloNoLeidos?: boolean;
@@ -36,10 +41,21 @@ function clienteGmail(accessToken: string): gmail_v1.Gmail {
 /** Arma la query de búsqueda de Gmail a partir de los filtros de la UI. */
 export function construirQuery({
   curso,
+  origen,
   busqueda,
   soloNoLeidos,
-}: Pick<OpcionesCorreos, "curso" | "busqueda" | "soloNoLeidos"> = {}): string {
-  const partes = [`from:${DOMINIO_CLASSROOM}`];
+}: Pick<OpcionesCorreos, "curso" | "origen" | "busqueda" | "soloNoLeidos"> = {}): string {
+  const partes: string[] = [];
+
+  if (origen === "Classroom") {
+    partes.push(`from:${DOMINIO_CLASSROOM}`);
+  } else if (origen === "CVG") {
+    partes.push(`from:${REMITENTE_CVG}`);
+  } else {
+    // Coexisten ambos remitentes
+    partes.push(`(from:${DOMINIO_CLASSROOM} OR from:${REMITENTE_CVG})`);
+  }
+
   if (soloNoLeidos) partes.push("is:unread");
   if (curso) partes.push(`"${escaparComillas(curso)}"`);
   if (busqueda?.trim()) partes.push(`"${escaparComillas(busqueda.trim())}"`);
@@ -81,6 +97,7 @@ function aCorreo(
     leido: !etiquetas.includes("UNREAD"),
     destacado: etiquetas.includes("STARRED"),
     curso: detectarCurso(`${asunto} ${resumen}`, cursos),
+    origen: detectarOrigen(email),
     link: `https://mail.google.com/mail/u/0/#inbox/${mensaje.id}`,
   };
 }

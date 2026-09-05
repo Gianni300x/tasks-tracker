@@ -1,8 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Clock, AlertCircle, Calendar, CheckCircle2 } from "lucide-react";
-import Sidebar, { colorParaCurso } from "./sidebar";
+import {
+  AlertCircle,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  LayoutGrid,
+  List,
+  Search,
+} from "lucide-react";
+import Sidebar, { colorParaCurso, type UsuarioSidebar } from "./sidebar";
 import {
   Tarea,
   diasHastaVencimiento,
@@ -13,6 +21,14 @@ import {
 import { clasificarTareas, contarPendientesPorCurso } from "../lib/tareas-service";
 
 type Tab = "pendientes" | "urgentes" | "semana" | "completadas";
+type VistaLayout = "grid" | "lista";
+
+const TABS_MAP: { valor: Tab; etiqueta: string }[] = [
+  { valor: "pendientes", etiqueta: "Pendientes" },
+  { valor: "urgentes", etiqueta: "Urgentes" },
+  { valor: "semana", etiqueta: "Esta semana" },
+  { valor: "completadas", etiqueta: "Completadas" },
+];
 
 function colorEtiquetaVencimiento(dias: number | null, completada: boolean): string {
   if (completada) return "bg-green-500 text-white";
@@ -22,13 +38,31 @@ function colorEtiquetaVencimiento(dias: number | null, completada: boolean): str
   return "bg-slate-100 text-slate-600";
 }
 
-export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
+/** Normaliza un string para búsqueda insensible a mayúsculas y tildes. */
+function normalizar(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+export default function Dashboard({
+  tareas,
+  usuario,
+  onCerrarSesion,
+}: {
+  tareas: Tarea[];
+  usuario?: UsuarioSidebar;
+  onCerrarSesion?: () => void;
+}) {
   const [tab, setTab] = useState<Tab>("pendientes");
-  const [cursoSeleccionado, setCursoSeleccionado] = useState<string | null>(null);
+  const [cursosSeleccionados, setCursosSeleccionados] = useState<string[]>([]);
+  const [busqueda, setBusqueda] = useState("");
+  const [vistaLayout, setVistaLayout] = useState<VistaLayout>("grid");
 
   const nombresCursos = useMemo(
     () => Array.from(new Set(tareas.map((t) => t.curso))),
-    [tareas]
+    [tareas],
   );
 
   const conteoPorCurso = useMemo(
@@ -36,12 +70,18 @@ export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
     [tareas]
   );
 
+  function toggleCurso(curso: string) {
+    setCursosSeleccionados((prev) =>
+      prev.includes(curso) ? prev.filter((c) => c !== curso) : [...prev, curso],
+    );
+  }
+
   const tareasFiltradasPorCurso = useMemo(
     () =>
-      cursoSeleccionado
-        ? tareas.filter((t) => t.curso === cursoSeleccionado)
-        : tareas,
-    [tareas, cursoSeleccionado]
+      cursosSeleccionados.length === 0
+        ? tareas
+        : tareas.filter((t) => cursosSeleccionados.includes(t.curso)),
+    [tareas, cursosSeleccionados],
   );
 
   const { pendientes, vencidas, urgentes, estaSemana, completadas } = useMemo(
@@ -49,16 +89,36 @@ export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
     [tareasFiltradasPorCurso]
   );
 
+  /** Conteos para los badges en tabs y statcards. */
+  const conteosPorTab: Record<Tab, number> = {
+    pendientes: pendientes.length,
+    urgentes: urgentes.length,
+    semana: estaSemana.length,
+    completadas: completadas.length,
+  };
+
   const tareasDelTab =
     tab === "pendientes"
       ? pendientes
       : tab === "urgentes"
-      ? urgentes
-      : tab === "semana"
-      ? estaSemana
-      : completadas;
+        ? urgentes
+        : tab === "semana"
+          ? estaSemana
+          : completadas;
 
-  const ordenadas = [...tareasDelTab].sort((a, b) => {
+  /** Aplica búsqueda sobre el tab activo, sin ir al servidor. */
+  const tareasFiltradas = useMemo(() => {
+    const q = normalizar(busqueda.trim());
+    if (!q) return tareasDelTab;
+    return tareasDelTab.filter(
+      (t) =>
+        normalizar(t.titulo).includes(q) ||
+        normalizar(t.descripcion ?? "").includes(q) ||
+        normalizar(t.curso).includes(q),
+    );
+  }, [tareasDelTab, busqueda]);
+
+  const ordenadas = [...tareasFiltradas].sort((a, b) => {
     const diasA = diasHastaVencimiento(a.vencimiento) ?? Infinity;
     const diasB = diasHastaVencimiento(b.vencimiento) ?? Infinity;
     return diasA - diasB;
@@ -75,21 +135,27 @@ export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
       <Sidebar
         cursos={nombresCursos}
         conteoPorCurso={conteoPorCurso}
-        cursoSeleccionado={cursoSeleccionado}
-        onSeleccionarCurso={setCursoSeleccionado}
+        cursosSeleccionados={cursosSeleccionados}
+        onToggleCurso={toggleCurso}
+        onLimpiarCursos={() => setCursosSeleccionados([])}
         seccion="tareas"
+        usuario={usuario}
+        onCerrarSesion={onCerrarSesion}
       />
 
-      {/* Contenido principal */}
       <main className="flex-1 p-8">
         <div className="mb-8">
           <h1 className="text-xl font-semibold text-slate-900">
-            {cursoSeleccionado ?? "Todas las tareas"}
+            {cursosSeleccionados.length === 0
+              ? "Todas las tareas"
+              : cursosSeleccionados.length === 1
+                ? cursosSeleccionados[0]
+                : `${cursosSeleccionados.length} cursos seleccionados`}
           </h1>
           <p className="text-sm text-slate-500 capitalize">{hoy}</p>
         </div>
 
-        {/* Tarjetas de stats */}
+        {/* StatCards — métricas de resumen */}
         <div className="grid grid-cols-4 gap-4 mb-8">
           <StatCard
             icono={<Clock size={18} className="text-indigo-600" />}
@@ -117,34 +183,87 @@ export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
           />
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6">
-          {(
-            [
-              ["pendientes", "Pendientes"],
-              ["urgentes", "Urgentes"],
-              ["semana", "Esta semana"],
-              ["completadas", "Completadas"],
-            ] as [Tab, string][]
-          ).map(([valor, etiqueta]) => (
+        {/* Barra de herramientas: Tabs + Buscador + Toggle de vista */}
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          {/* Tabs con badge de conteo */}
+          <div className="flex gap-2 flex-wrap">
+            {TABS_MAP.map(({ valor, etiqueta }) => (
+              <button
+                key={valor}
+                onClick={() => setTab(valor)}
+                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  tab === valor
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                {etiqueta}
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                    tab === valor
+                      ? "bg-white/25 text-white"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {conteosPorTab[valor]}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Buscador */}
+          <div className="relative flex-1 min-w-48 max-w-sm">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar entregas, temas o TPs…"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none"
+            />
+          </div>
+
+          {/* Toggle Grid / Lista */}
+          <div className="flex items-center rounded-lg border border-slate-200 bg-white p-1 shrink-0">
             <button
-              key={valor}
-              onClick={() => setTab(valor)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                tab === valor
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-100"
+              onClick={() => setVistaLayout("grid")}
+              title="Vista Cuadrícula"
+              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                vistaLayout === "grid"
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-500 hover:text-slate-900"
               }`}
             >
-              {etiqueta}
+              <LayoutGrid size={16} />
             </button>
-          ))}
+            <button
+              onClick={() => setVistaLayout("lista")}
+              title="Vista Lista Compacta"
+              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                vistaLayout === "lista"
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              <List size={16} />
+            </button>
+          </div>
         </div>
 
-        {/* Grid de tareas */}
+        {/* Contenido */}
         {ordenadas.length === 0 ? (
-          <p className="text-slate-500 text-sm">No hay tareas en esta categoría.</p>
-        ) : (
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <CheckCircle2 size={32} className="text-slate-300" />
+            <p className="text-slate-500 text-sm">
+              {busqueda
+                ? `Sin resultados para "${busqueda}" en esta categoría.`
+                : "No hay tareas en esta categoría."}
+            </p>
+          </div>
+        ) : vistaLayout === "grid" ? (
+          // Vista cuadrícula (3 columnas)
           <div className="grid grid-cols-3 gap-4">
             {ordenadas.map((tarea, i) => {
               const dias = diasHastaVencimiento(tarea.vencimiento);
@@ -155,13 +274,13 @@ export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
                   href={tarea.link}
                   target="_blank"
                   rel="noreferrer"
-                  className="block bg-white border border-slate-200 shadow-sm rounded-xl p-4 hover:border-indigo-300 hover:shadow-md transition-all"
+                  className="block bg-white border border-slate-200 shadow-sm rounded-xl p-4 hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <span
                       className={`text-xs font-medium ${colorParaCurso(
                         tarea.curso,
-                        nombresCursos
+                        nombresCursos,
                       )}`}
                     >
                       {tarea.curso}
@@ -169,7 +288,7 @@ export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
                     <span
                       className={`text-xs px-2 py-1 rounded-full ${colorEtiquetaVencimiento(
                         dias,
-                        completada
+                        completada,
                       )}`}
                     >
                       {completada ? "Entregada" : etiquetaVencimiento(dias)}
@@ -185,6 +304,66 @@ export default function Dashboard({ tareas }: { tareas: Tarea[] }) {
                     <span>{formatearFecha(tarea.vencimiento)}</span>
                     {tarea.puntos !== null && <span>{tarea.puntos} pts</span>}
                   </div>
+                </a>
+              );
+            })}
+          </div>
+        ) : (
+          // Vista lista compacta
+          <div className="flex flex-col divide-y divide-slate-100 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            {ordenadas.map((tarea, i) => {
+              const dias = diasHastaVencimiento(tarea.vencimiento);
+              const completada = estaCompletada(tarea);
+              return (
+                <a
+                  key={i}
+                  href={tarea.link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-4 px-5 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  {/* Indicador de estado */}
+                  <span
+                    className={`shrink-0 h-2.5 w-2.5 rounded-full ${
+                      completada
+                        ? "bg-green-500"
+                        : dias !== null && dias < 0
+                          ? "bg-red-500"
+                          : dias !== null && dias <= 1
+                            ? "bg-orange-400"
+                            : "bg-indigo-400"
+                    }`}
+                  />
+
+                  {/* Titulo */}
+                  <span className="flex-1 text-sm font-medium text-slate-900 truncate">
+                    {tarea.titulo}
+                  </span>
+
+                  {/* Curso */}
+                  <span
+                    className={`hidden sm:inline shrink-0 text-xs font-medium ${colorParaCurso(
+                      tarea.curso,
+                      nombresCursos,
+                    )}`}
+                  >
+                    {tarea.curso}
+                  </span>
+
+                  {/* Badge estado */}
+                  <span
+                    className={`shrink-0 text-xs px-2 py-0.5 rounded-full ${colorEtiquetaVencimiento(
+                      dias,
+                      completada,
+                    )}`}
+                  >
+                    {completada ? "Entregada" : etiquetaVencimiento(dias)}
+                  </span>
+
+                  {/* Fecha vencimiento */}
+                  <span className="shrink-0 text-xs text-slate-400 w-24 text-right">
+                    {formatearFecha(tarea.vencimiento)}
+                  </span>
                 </a>
               );
             })}
@@ -207,8 +386,10 @@ function StatCard({
   fondo: string;
 }) {
   return (
-    <div className={`${fondo} border border-slate-200 shadow-sm rounded-xl p-4 flex items-center gap-3`}>
-      <div className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-200">
+    <div
+      className={`${fondo} border border-slate-200 shadow-sm rounded-xl p-4 flex items-center gap-3`}
+    >
+      <div className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-200 shrink-0">
         {icono}
       </div>
       <div>

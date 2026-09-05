@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { auth, signIn } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { fetchCorreosDeClassroom } from "@/app/lib/correos-server";
 import { fetchNombresCursos } from "@/app/lib/tareas-server";
 import Correos from "@/app/components/correos";
@@ -14,10 +14,24 @@ export default async function CorreosPage() {
 
   const bandeja = await cargarBandeja(session.access_token);
 
+  const usuario = {
+    name: session.user?.name,
+    email: session.user?.email,
+    image: session.user?.image,
+  };
+
   if (!bandeja) return <PermisoFaltante />;
 
   return (
-    <Correos cursos={bandeja.cursos} paginaInicial={bandeja.paginaInicial} />
+    <Correos
+      cursos={bandeja.cursos}
+      paginaInicial={bandeja.paginaInicial}
+      usuario={usuario}
+      onCerrarSesion={async () => {
+        "use server";
+        await signOut({ redirectTo: "/" });
+      }}
+    />
   );
 }
 
@@ -44,8 +58,8 @@ function PermisoFaltante() {
           Falta el permiso de Gmail
         </h1>
         <p className="mb-6 text-sm text-slate-500">
-          Para mostrarte los correos de Classroom, Syllo necesita permiso de
-          solo lectura sobre tu Gmail. Volvé a iniciar sesión para otorgarlo.
+          Para mostrarte los correos de Classroom y CVG, Syllo necesita permiso
+          de solo lectura sobre tu Gmail. Volvé a iniciar sesión para otorgarlo.
         </p>
         <form
           action={async () => {

@@ -20,12 +20,13 @@ import {
 } from "../lib/classroom";
 import { clasificarTareas, contarPendientesPorCurso } from "../lib/tareas-service";
 
-type Tab = "pendientes" | "urgentes" | "semana" | "completadas";
+type Tab = "pendientes" | "urgentes" | "vencidas" | "semana" | "completadas";
 type VistaLayout = "grid" | "lista";
 
 const TABS_MAP: { valor: Tab; etiqueta: string }[] = [
   { valor: "pendientes", etiqueta: "Pendientes" },
   { valor: "urgentes", etiqueta: "Urgentes" },
+  { valor: "vencidas", etiqueta: "Vencidas" },
   { valor: "semana", etiqueta: "Esta semana" },
   { valor: "completadas", etiqueta: "Completadas" },
 ];
@@ -84,15 +85,14 @@ export default function Dashboard({
     [tareas, cursosSeleccionados],
   );
 
-  const { pendientes, vencidas, urgentes, estaSemana, completadas } = useMemo(
-    () => clasificarTareas(tareasFiltradasPorCurso),
-    [tareasFiltradasPorCurso]
-  );
+  const { pendientes, vencidas, vencidasRecientes, urgentes, estaSemana, completadas } =
+    useMemo(() => clasificarTareas(tareasFiltradasPorCurso), [tareasFiltradasPorCurso]);
 
   /** Conteos para los badges en tabs y statcards. */
   const conteosPorTab: Record<Tab, number> = {
     pendientes: pendientes.length,
     urgentes: urgentes.length,
+    vencidas: vencidasRecientes.length,
     semana: estaSemana.length,
     completadas: completadas.length,
   };
@@ -102,9 +102,11 @@ export default function Dashboard({
       ? pendientes
       : tab === "urgentes"
         ? urgentes
-        : tab === "semana"
-          ? estaSemana
-          : completadas;
+        : tab === "vencidas"
+          ? vencidasRecientes
+          : tab === "semana"
+            ? estaSemana
+            : completadas;
 
   /** Aplica búsqueda sobre el tab activo, sin ir al servidor. */
   const tareasFiltradas = useMemo(() => {
